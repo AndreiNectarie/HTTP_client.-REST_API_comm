@@ -1,57 +1,60 @@
-# PCom Homework #4
+# Program Flow
 
-This repository contains starter scripts for the PCom HTTP client assignment.
+Programul intră într-un ciclu infinită, așteptând comenzi de la utilizator, cu conditia de iesire fiind comanda exit. În fiecare iterație a buclei, socket-ul este deschis și închis pentru a menține conexiunea activă cu serverul. Comanda utilizatorului este citită și, în funcție de comanda introdusă, se execută diferite acțiuni:
 
-## Checker
+1. **register**: Utilizatorului i se cere să introducă un nume de utilizator și o parolă, apoi se înregistrează la server folosind aceste detalii. Daca username-ul este deja folosit, clientul este atentionat.
 
-Dependencies:
+2. **login**: Clientului i se cere să introducă un nume de utilizator și o parolă, pentru a se autentifica la server folosind aceste detalii. Dacă autentificarea este reușită, cookie-ul de sesiune returnat de server este salvat.
 
-- Python >= 3.7;
-- [`pexpect`](https://pexpect.readthedocs.io/en/stable/) (third party Python package);
+3. **enter_library**: Dacă utilizatorul este autentificat (adică, login_cookie nu este NULL), tokenul returnat de server este salvat pentru viitoare actiuni asupra bibliotecii.
 
-It is highly recommended to use a VirtualEnv:
-```sh
-python3 -mvenv .venv
-# Note: you need to source activate each time you start a new terminal
-source .venv/bin/activate
-```
+4. **get_books**: Dacă utilizatorul are acces la bibliotecă (adică, lib_token nu este "error"), toate cărțile din bibliotecă sunt afisate intr-un format JSON.
 
-Afterwards, install `pexpect` using PIP:
-```sh
-python3 -mpip install pexpect
-```
+5. **get_book**: Dacă utilizatorul are acces la bibliotecă, se vor afisa toate detaliile legate de cartea cu id-ul introdus de client prin STDIN.
 
-### Usage
+6. **add_book**: Dacă utilizatorul are acces la bibliotecă, acestuia i se cere să introducă detalii despre o carte, apoi cartea este adăugată în bibliotecă. Acele detalii legate de carte sunt trasmise prin JSON.
 
-Invoke the checker on your client's compiled executable:
+7. **delete_book**: Dacă utilizatorul are acces la bibliotecă, o carte specifică din bibliotecă este ștearsă, în funcție de ID-ul introdus de utilizator la tastatura.
 
-```sh
-# !!! don't forget to source .venv/bin/activate !!!
-# first, read the tool's internal help:
-python3 checker/checker.py --help 
-# run the checker using default settings:
-python3 checker/checker.py ../path/to/client
-# Hint: supply a custom username:password (make sure to use something unique)
-python3 checker/checker.py --user 'myuser-1337:hunter2' ../path/to/client
-```
+8. **logout**: Dacă utilizatorul este autentificat, acesta este deconectat de la server.
 
-> **Warning**: the checker has default credentials (`test:test123`) as constants
-> inside the source code. You may want to change them to avoid always specifying
-> the `--user user:pass` argument at each invocation.
+9. **exit**: Programul se inchide fara niciun mesaj de confirmare.
 
-Also, the server is shared between all students and never forgets an user
-account or its stored books (for the duration of the assignment, at least).
-Thus, you might wish to occasionally create a new user for having a clean slate.
+Daca comanda nu este recunoscuta, clientul primeste notificare legat de asta.
+------------------------------------------------------------------------------------------------------------------
 
-Alternately, use `--script delete_all` if you have a functioning implementation
-for `get_books` and `delete_book` (and the common login part, ofc!).
 
-Also make sure to check out [the source code](./checker/checker.py) for the
-actual details about the script being tested.
+# Requests to server
 
-> <span style="color: #A33">**Warning**: The checker is just an instrument used by
-our team to automate the verification process. It should not be regarded as the
-single source of truth for assessing the correctness of a solution.
-It may also contain bugs (we also manually validate your programs when
-a script fails), though forum reports and PRs are welcome!</span>
+1) GET:
+- Functia compute_get_request este responsabila pentru creearea GET request-urilor.
 
+Aceasta este funcția primită la laborator, la care eu am adăugat și tokenul de autorizare Authorization Bearer pentru accesul la bibliotecă. 
+După ce adaugă într-un buffer toate detaliile necesare request-ului, aceasta returnează buffer-ul.
+
+2) POST
+- Functia compute_post_request creeaza POST request-urile.
+
+Aceasta este funcția primită la laborator, la care eu am adăugat și tokenul de autorizare Authorization Bearer pentru accesul la bibliotecă. 
+După ce adaugă într-un buffer toate detaliile necesare request-ului, aceasta returnează buffer-ul.
+
+3) DELETE
+- Funcția compute_delete_request creează cereri DELETE. Este scrisă după modelul celei responsabile pentru POST, primită de la laborator.
+
+Toate aceste cereri sunt trimise la server prin funcția **send_to_server** din laborator, iar răspunsurile de la server sunt primite prin funcția **receive_from_server**, tot din laborator.
+------------------------------------------------------------------------------------------------------------------
+
+
+# Folosirea bibliotecii nlohmann::json
+
+Pt lucrul cu JSON am folosit biblioteca nlohmann astfel: 
+
+1) Creez un obiect JSON gol;
+2) Adaug perechile key-value în obiectul JSON.
+3) Apoi convertesc obiectul JSON într-un string folosind metoda dump(), iar apoi acel string in transform intr-un sir de caractere pentru al trimite serverului.
+------------------------------------------------------------------------------------------------------------------
+
+
+# Explicarea algoritmului.
+
+Fiecare comandă de la client este realizată prin funcțiile din fișierul client.cpp. Acestea urmează un tipar simplu: primesc parametrii necesari request-ului, verifica daca clientul are drepturile necesare (cookie, token), pregătesc restul de date necesare acestuia (obiecte JSON), creează request-ul necesar, îl trimit la server, așteaptă răspunsul și apoi îl interpretează, afișând la STDOUT statusul comenzii și, dacă este necesar, și răspunsul serverului, fără antet (de exemplu, get_books returnează lista de JSON de la server).
